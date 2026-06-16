@@ -12,6 +12,8 @@ let appState = {
 const refreshBtn = document.getElementById('refresh-btn');
 const refreshIcon = document.getElementById('refresh-icon');
 const exportCsvBtn = document.getElementById('export-csv-btn');
+const themeToggleBtn = document.getElementById('theme-toggle-btn');
+const themeToggleIcon = document.getElementById('theme-toggle-icon');
 const lastSyncTime = document.getElementById('last-sync-time');
 const searchInput = document.getElementById('search-input');
 const filterPillsContainer = document.getElementById('filter-pills-container');
@@ -54,6 +56,16 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initApp() {
+    // Load saved theme
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    if (savedTheme === 'light') {
+        document.body.classList.add('light-theme');
+        themeToggleIcon.setAttribute('data-lucide', 'moon');
+    } else {
+        document.body.classList.remove('light-theme');
+        themeToggleIcon.setAttribute('data-lucide', 'sun');
+    }
+
     // Set up progress circle
     charProgress.style.strokeDasharray = `${PROGRESS_CIRCUMFERENCE} ${PROGRESS_CIRCUMFERENCE}`;
     charProgress.style.strokeDashoffset = PROGRESS_CIRCUMFERENCE;
@@ -64,6 +76,7 @@ function initApp() {
     // Event Listeners
     refreshBtn.addEventListener('click', () => fetchReleaseNotes(true));
     exportCsvBtn.addEventListener('click', exportToCSV);
+    themeToggleBtn.addEventListener('click', toggleTheme);
     retryBtn.addEventListener('click', () => fetchReleaseNotes(true));
     clearFiltersBtn.addEventListener('click', clearFilters);
     
@@ -604,4 +617,22 @@ function showToast(message, type = 'info') {
     setTimeout(() => {
         toast.remove();
     }, 4000);
+}
+
+// Toggle Light/Dark Theme
+function toggleTheme() {
+    const isLight = document.body.classList.toggle('light-theme');
+    
+    if (isLight) {
+        localStorage.setItem('theme', 'light');
+        themeToggleIcon.setAttribute('data-lucide', 'moon');
+        showToast('Swapped to Light Theme', 'info');
+    } else {
+        localStorage.setItem('theme', 'dark');
+        themeToggleIcon.setAttribute('data-lucide', 'sun');
+        showToast('Swapped to Dark Theme', 'info');
+    }
+    
+    // Re-create icons for the theme toggle button
+    lucide.createIcons();
 }
