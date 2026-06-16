@@ -557,7 +557,11 @@ function openComposer(updateId, dateStr, linkStr) {
 // Reset Composer Draft
 function resetTweetDraft() {
     if (!appState.selectedUpdate) return;
-    tweetTextarea.value = appState.selectedUpdate.defaultDraftText;
+    
+    const defaultText = appState.selectedUpdate.defaultDraftText || 
+        generateTweetDraft(appState.selectedUpdate, appState.selectedUpdate.date, appState.selectedUpdate.link);
+        
+    tweetTextarea.value = defaultText;
     updateCharCounter();
     showToast('Tweet draft reset!', 'info');
 }
@@ -583,6 +587,7 @@ function toggleReadStatus(updateId) {
 function closeComposer() {
     tweetDrawer.classList.remove('open');
     document.body.style.overflow = ''; // Release scroll lock
+    tweetTextarea.value = ''; // Clear textarea on close
     appState.selectedUpdate = null;
 }
 
