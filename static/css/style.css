@@ -618,13 +618,25 @@ body {
     align-items: center;
     gap: 0.35rem;
     transition: var(--transition-fast);
+.update-actions-wrapper {
+    display: flex;
+    gap: 0.5rem;
 }
 
 .update-item:hover .update-action-trigger {
     opacity: 1;
-    background: rgba(29, 155, 240, 0.1);
+}
+
+.update-action-trigger.tweet-update-trigger:hover {
+    background: rgba(29, 155, 240, 0.12);
     color: #1d9bf0;
-    border-color: rgba(29, 155, 240, 0.2);
+    border-color: rgba(29, 155, 240, 0.25);
+}
+
+.update-action-trigger.copy-update-trigger:hover {
+    background: rgba(99, 102, 241, 0.12);
+    color: #a5b4fc;
+    border-color: rgba(99, 102, 241, 0.25);
 }
 
 .update-action-trigger:hover {

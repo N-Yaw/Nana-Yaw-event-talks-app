@@ -11,6 +11,7 @@ let appState = {
 // DOM Elements
 const refreshBtn = document.getElementById('refresh-btn');
 const refreshIcon = document.getElementById('refresh-icon');
+const exportCsvBtn = document.getElementById('export-csv-btn');
 const lastSyncTime = document.getElementById('last-sync-time');
 const searchInput = document.getElementById('search-input');
 const filterPillsContainer = document.getElementById('filter-pills-container');
@@ -62,6 +63,7 @@ function initApp() {
 
     // Event Listeners
     refreshBtn.addEventListener('click', () => fetchReleaseNotes(true));
+    exportCsvBtn.addEventListener('click', exportToCSV);
     retryBtn.addEventListener('click', () => fetchReleaseNotes(true));
     clearFiltersBtn.addEventListener('click', clearFilters);
     
@@ -263,10 +265,16 @@ function renderFeed() {
                 <div class="update-item" data-type="${upd.type}">
                     <div class="update-meta-row">
                         <span class="badge ${badgeClass}">${upd.type}</span>
-                        <button class="update-action-trigger" data-update-id="${upd.id}" data-entry-date="${entry.date}" data-entry-link="${entry.link}">
-                            <i data-lucide="twitter"></i>
-                            <span>Tweet Update</span>
-                        </button>
+                        <div class="update-actions-wrapper">
+                            <button class="update-action-trigger copy-update-trigger" data-update-id="${upd.id}" title="Copy plain text update to clipboard">
+                                <i data-lucide="copy"></i>
+                                <span>Copy</span>
+                            </button>
+                            <button class="update-action-trigger tweet-update-trigger" data-update-id="${upd.id}" data-entry-date="${entry.date}" data-entry-link="${entry.link}" title="Draft a tweet for this update">
+                                <i data-lucide="twitter"></i>
+                                <span>Tweet</span>
+                            </button>
+                        </div>
                     </div>
                     <div class="update-body">
                         ${upd.html_content}
@@ -281,7 +289,7 @@ function renderFeed() {
     });
 
     // Bind Tweet buttons
-    document.querySelectorAll('.update-action-trigger').forEach(btn => {
+    document.querySelectorAll('.tweet-update-trigger').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const updateId = btn.dataset.updateId;
             const dateStr = btn.dataset.entryDate;
@@ -290,8 +298,91 @@ function renderFeed() {
         });
     });
 
+    // Bind Copy buttons
+    document.querySelectorAll('.copy-update-trigger').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const updateId = btn.dataset.updateId;
+            copyUpdateToClipboard(updateId);
+        });
+    });
+
     // Re-create icons for dynamically added elements
     lucide.createIcons();
+}
+
+// Copy Specific Update Plain Text to Clipboard
+async function copyUpdateToClipboard(updateId) {
+    let foundUpdate = null;
+    for (const entry of appState.allEntries) {
+        foundUpdate = entry.updates.find(upd => upd.id === updateId);
+        if (foundUpdate) break;
+    }
+
+    if (!foundUpdate) {
+        showToast('Error copying content: Update not found', 'error');
+        return;
+    }
+
+    try {
+        await navigator.clipboard.writeText(foundUpdate.text_content);
+        showToast('Update copied to clipboard!', 'success');
+    } catch (err) {
+        console.error('Failed to copy text: ', err);
+        showToast('Failed to copy to clipboard', 'error');
+    }
+}
+
+// Export Filtered Entries to CSV
+function exportToCSV() {
+    if (appState.filteredEntries.length === 0) {
+        showToast('No entries available to export', 'warning');
+        return;
+    }
+
+    const headers = ['Date', 'Type', 'Link', 'Content'];
+    let csvRows = [headers.join(',')];
+
+    appState.filteredEntries.forEach(entry => {
+        entry.updates.forEach(upd => {
+            const row = [
+                escapeCSV(entry.date),
+                escapeCSV(upd.type),
+                escapeCSV(entry.link),
+                escapeCSV(upd.text_content)
+            ];
+            csvRows.push(row.join(','));
+        });
+    });
+
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    // Generate filename based on active filters/search
+    let filename = 'bigquery_release_notes';
+    if (appState.currentFilter !== 'all') {
+        filename += `_${appState.currentFilter.toLowerCase()}`;
+    }
+    if (appState.searchQuery) {
+        filename += `_filtered`;
+    }
+    filename += '.csv';
+
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showToast(`Exported CSV as: ${filename}`, 'success');
+}
+
+function escapeCSV(text) {
+    if (!text) return '""';
+    return `"${text.replace(/"/g, '""')}"`;
 }
 
 // Open Tweet Composer Drawer
