@@ -51,9 +51,13 @@ const toastContainer = document.getElementById('toast-container');
 const PROGRESS_CIRCUMFERENCE = 88;
 
 // Initialize App
-document.addEventListener('DOMContentLoaded', () => {
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        initApp();
+    });
+} else {
     initApp();
-});
+}
 
 function initApp() {
     // Load saved theme
