@@ -60,15 +60,16 @@ if (document.readyState === 'loading') {
 }
 
 function initApp() {
-    // Load saved theme
-    const savedTheme = localStorage.getItem('theme') || 'dark';
-    if (savedTheme === 'light') {
-        document.body.classList.add('light-theme');
-        themeToggleIcon.setAttribute('data-lucide', 'moon');
-    } else {
-        document.body.classList.remove('light-theme');
-        themeToggleIcon.setAttribute('data-lucide', 'sun');
-    }
+    // Load saved theme or system preference
+    const initialTheme = getInitialTheme();
+    applyTheme(initialTheme);
+
+    // Listen for system theme changes (applies only if user hasn't overridden manually)
+    window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', e => {
+        if (!localStorage.getItem('theme')) {
+            applyTheme(e.matches ? 'light' : 'dark');
+        }
+    });
 
     // Set up progress circle
     charProgress.style.strokeDasharray = `${PROGRESS_CIRCUMFERENCE} ${PROGRESS_CIRCUMFERENCE}`;
@@ -623,20 +624,35 @@ function showToast(message, type = 'info') {
     }, 4000);
 }
 
-// Toggle Light/Dark Theme
-function toggleTheme() {
-    const isLight = document.body.classList.toggle('light-theme');
+// Theme Helper Functions
+function getInitialTheme() {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) return savedTheme;
     
-    if (isLight) {
-        localStorage.setItem('theme', 'light');
+    // Fall back to system preference
+    const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+    return prefersLight ? 'light' : 'dark';
+}
+
+function applyTheme(theme) {
+    if (theme === 'light') {
+        document.body.classList.add('light-theme');
         themeToggleIcon.setAttribute('data-lucide', 'moon');
-        showToast('Swapped to Light Theme', 'info');
     } else {
-        localStorage.setItem('theme', 'dark');
+        document.body.classList.remove('light-theme');
         themeToggleIcon.setAttribute('data-lucide', 'sun');
-        showToast('Swapped to Dark Theme', 'info');
     }
+    // Re-render Lucide icons for the toggle button
+    if (window.lucide) {
+        lucide.createIcons();
+    }
+}
+
+function toggleTheme() {
+    const isCurrentlyLight = document.body.classList.contains('light-theme');
+    const newTheme = isCurrentlyLight ? 'dark' : 'light';
     
-    // Re-create icons for the theme toggle button
-    lucide.createIcons();
+    localStorage.setItem('theme', newTheme);
+    applyTheme(newTheme);
+    showToast(`Swapped to ${newTheme === 'light' ? 'Light' : 'Dark'} Theme`, 'info');
 }
