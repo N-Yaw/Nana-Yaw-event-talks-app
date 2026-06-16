@@ -5,7 +5,9 @@ let appState = {
     currentFilter: 'all',
     searchQuery: '',
     lastFetched: null,
-    selectedUpdate: null
+    selectedUpdate: null,
+    readUpdates: new Set(),
+    collapsedDays: new Set()
 };
 
 // DOM Elements
@@ -14,6 +16,9 @@ const refreshIcon = document.getElementById('refresh-icon');
 const exportCsvBtn = document.getElementById('export-csv-btn');
 const themeToggleBtn = document.getElementById('theme-toggle-btn');
 const themeToggleIcon = document.getElementById('theme-toggle-icon');
+const searchClearBtn = document.getElementById('search-clear-btn');
+const resetTweetBtn = document.getElementById('reset-tweet-btn');
+const backToTopBtn = document.getElementById('back-to-top-btn');
 const lastSyncTime = document.getElementById('last-sync-time');
 const searchInput = document.getElementById('search-input');
 const filterPillsContainer = document.getElementById('filter-pills-container');
@@ -71,6 +76,15 @@ function initApp() {
         }
     });
 
+    // Load saved read updates state
+    try {
+        const savedRead = JSON.parse(localStorage.getItem('readUpdates') || '[]');
+        appState.readUpdates = new Set(savedRead);
+    } catch (e) {
+        appState.readUpdates = new Set();
+    }
+    appState.collapsedDays = new Set();
+
     // Set up progress circle
     charProgress.style.strokeDasharray = `${PROGRESS_CIRCUMFERENCE} ${PROGRESS_CIRCUMFERENCE}`;
     charProgress.style.strokeDashoffset = PROGRESS_CIRCUMFERENCE;
@@ -82,18 +96,40 @@ function initApp() {
     refreshBtn.addEventListener('click', () => fetchReleaseNotes(true));
     exportCsvBtn.addEventListener('click', exportToCSV);
     themeToggleBtn.addEventListener('click', toggleTheme);
+    searchClearBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        appState.searchQuery = '';
+        searchInput.parentElement.classList.remove('search-input-active');
+        searchClearBtn.classList.add('hidden');
+        filterAndRender();
+    });
     retryBtn.addEventListener('click', () => fetchReleaseNotes(true));
     clearFiltersBtn.addEventListener('click', clearFilters);
+    resetTweetBtn.addEventListener('click', resetTweetDraft);
+
+    // Back to top scroll listener
+    window.addEventListener('scroll', () => {
+        if (window.scrollY > 300) {
+            backToTopBtn.classList.add('visible');
+        } else {
+            backToTopBtn.classList.remove('visible');
+        }
+    });
+
+    backToTopBtn.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
     
     searchInput.addEventListener('input', (e) => {
         appState.searchQuery = e.target.value.trim().toLowerCase();
         
-        // Add visual style class to wrapper
         const wrapper = searchInput.parentElement;
         if (appState.searchQuery) {
             wrapper.classList.add('search-input-active');
+            searchClearBtn.classList.remove('hidden');
         } else {
             wrapper.classList.remove('search-input-active');
+            searchClearBtn.classList.add('hidden');
         }
         
         filterAndRender();
@@ -164,7 +200,6 @@ async function fetchReleaseNotes(forceRefresh = false) {
 
         // Render Page
         updateSyncTime(json.last_fetched);
-        calculateStats();
         filterAndRender();
 
         if (forceRefresh) {
@@ -183,31 +218,43 @@ async function fetchReleaseNotes(forceRefresh = false) {
     }
 }
 
-// Calculate Global Stats
+// Calculate Global Stats and Filtered Stats
 function calculateStats() {
-    const entries = appState.allEntries;
-    statDays.textContent = entries.length;
-
+    const totalEntries = appState.allEntries.length;
+    const filteredEntries = appState.filteredEntries.length;
+    
     let totalUpdates = 0;
-    let featuresCount = 0;
-    let issuesCount = 0;
-
-    entries.forEach(entry => {
+    let totalFeatures = 0;
+    let totalIssues = 0;
+    
+    appState.allEntries.forEach(entry => {
         const updates = entry.updates || [];
         totalUpdates += updates.length;
-        
         updates.forEach(upd => {
-            if (upd.type === 'Feature') {
-                featuresCount++;
-            } else if (upd.type === 'Issue' || upd.type === 'Deprecation') {
-                issuesCount++;
-            }
+            if (upd.type === 'Feature') totalFeatures++;
+            else if (upd.type === 'Issue' || upd.type === 'Deprecation') totalIssues++;
         });
     });
 
-    statTotal.textContent = totalUpdates;
-    statFeatures.textContent = featuresCount;
-    statIssues.textContent = issuesCount;
+    let filteredUpdates = 0;
+    let filteredFeatures = 0;
+    let filteredIssues = 0;
+    
+    appState.filteredEntries.forEach(entry => {
+        const updates = entry.updates || [];
+        filteredUpdates += updates.length;
+        updates.forEach(upd => {
+            if (upd.type === 'Feature') filteredFeatures++;
+            else if (upd.type === 'Issue' || upd.type === 'Deprecation') filteredIssues++;
+        });
+    });
+
+    const isFiltered = appState.currentFilter !== 'all' || appState.searchQuery !== '';
+
+    statDays.textContent = isFiltered ? `${filteredEntries} / ${totalEntries}` : totalEntries;
+    statTotal.textContent = isFiltered ? `${filteredUpdates} / ${totalUpdates}` : totalUpdates;
+    statFeatures.textContent = isFiltered ? `${filteredFeatures} / ${totalFeatures}` : totalFeatures;
+    statIssues.textContent = isFiltered ? `${filteredIssues} / ${totalIssues}` : totalIssues;
 }
 
 // Filter and Render Release Notes
@@ -239,6 +286,9 @@ function filterAndRender() {
         }
     });
 
+    // Recalculate stats with the filtered set
+    calculateStats();
+
     // Render feed
     renderFeed();
 }
@@ -255,13 +305,19 @@ function renderFeed() {
     showEmpty(false);
 
     appState.filteredEntries.forEach(entry => {
+        const isCollapsed = appState.collapsedDays.has(entry.id);
+        const collapsedClass = isCollapsed ? 'collapsed' : '';
+
         const card = document.createElement('article');
-        card.className = 'release-day-card';
+        card.className = `release-day-card ${collapsedClass}`;
         card.id = `card-${entry.id.replace(/[^\w-]/g, '_')}`;
 
         const headerHtml = `
             <div class="release-day-header">
                 <div class="release-day-title">
+                    <button class="day-collapse-btn" data-entry-id="${entry.id}" title="${isCollapsed ? 'Expand day' : 'Collapse day'}">
+                        <i data-lucide="chevron-down"></i>
+                    </button>
                     <i data-lucide="calendar-days"></i>
                     <h2>${entry.date}</h2>
                 </div>
@@ -279,11 +335,18 @@ function renderFeed() {
             else if (upd.type === 'Issue') badgeClass = 'badge-issue';
             else if (upd.type === 'Deprecation') badgeClass = 'badge-deprecation';
 
+            const isRead = appState.readUpdates.has(upd.id);
+            const readClass = isRead ? 'is-read' : '';
+
             updatesHtml += `
-                <div class="update-item" data-type="${upd.type}">
+                <div class="update-item ${readClass}" data-type="${upd.type}">
                     <div class="update-meta-row">
                         <span class="badge ${badgeClass}">${upd.type}</span>
                         <div class="update-actions-wrapper">
+                            <button class="update-action-trigger read-toggle-trigger" data-update-id="${upd.id}" title="${isRead ? 'Mark as unread' : 'Mark as read'}">
+                                <i data-lucide="${isRead ? 'eye-off' : 'eye'}"></i>
+                                <span>${isRead ? 'Unread' : 'Read'}</span>
+                            </button>
                             <button class="update-action-trigger copy-update-trigger" data-update-id="${upd.id}" title="Copy plain text update to clipboard">
                                 <i data-lucide="copy"></i>
                                 <span>Copy</span>
@@ -306,6 +369,34 @@ function renderFeed() {
         releaseFeed.appendChild(card);
     });
 
+    // Bind Day Collapse buttons
+    document.querySelectorAll('.day-collapse-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const entryId = btn.dataset.entryId;
+            const card = btn.closest('.release-day-card');
+            const isCollapsed = card.classList.toggle('collapsed');
+            
+            if (isCollapsed) {
+                appState.collapsedDays.add(entryId);
+                btn.setAttribute('title', 'Expand day');
+            } else {
+                appState.collapsedDays.delete(entryId);
+                btn.setAttribute('title', 'Collapse day');
+            }
+            
+            // Re-create icons for the button
+            lucide.createIcons();
+        });
+    });
+
+    // Bind Read Toggle buttons
+    document.querySelectorAll('.read-toggle-trigger').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const updateId = btn.dataset.updateId;
+            toggleReadStatus(updateId);
+        });
+    });
+
     // Bind Tweet buttons
     document.querySelectorAll('.tweet-update-trigger').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -316,11 +407,23 @@ function renderFeed() {
         });
     });
 
-    // Bind Copy buttons
+    // Bind Copy buttons with visual success feedback
     document.querySelectorAll('.copy-update-trigger').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', async (e) => {
             const updateId = btn.dataset.updateId;
-            copyUpdateToClipboard(updateId);
+            const success = await copyUpdateToClipboard(updateId);
+            
+            if (success) {
+                btn.classList.add('copy-success');
+                btn.innerHTML = `<i data-lucide="check"></i><span>Copied!</span>`;
+                lucide.createIcons();
+                
+                setTimeout(() => {
+                    btn.classList.remove('copy-success');
+                    btn.innerHTML = `<i data-lucide="copy"></i><span>Copy</span>`;
+                    lucide.createIcons();
+                }, 2000);
+            }
         });
     });
 
@@ -338,15 +441,17 @@ async function copyUpdateToClipboard(updateId) {
 
     if (!foundUpdate) {
         showToast('Error copying content: Update not found', 'error');
-        return;
+        return false;
     }
 
     try {
         await navigator.clipboard.writeText(foundUpdate.text_content);
         showToast('Update copied to clipboard!', 'success');
+        return true;
     } catch (err) {
         console.error('Failed to copy text: ', err);
         showToast('Failed to copy to clipboard', 'error');
+        return false;
     }
 }
 
@@ -438,12 +543,40 @@ function openComposer(updateId, dateStr, linkStr) {
     const tweetText = generateTweetDraft(foundUpdate, dateStr, linkStr);
     tweetTextarea.value = tweetText;
 
+    // Save default draft text for reset functionality
+    appState.selectedUpdate.defaultDraftText = tweetText;
+
     // Show Drawer
     tweetDrawer.classList.add('open');
     document.body.style.overflow = 'hidden'; // Lock background scroll
 
     // Update character counter
     updateCharCounter();
+}
+
+// Reset Composer Draft
+function resetTweetDraft() {
+    if (!appState.selectedUpdate) return;
+    tweetTextarea.value = appState.selectedUpdate.defaultDraftText;
+    updateCharCounter();
+    showToast('Tweet draft reset!', 'info');
+}
+
+// Toggle Read/Unread Status of an Update
+function toggleReadStatus(updateId) {
+    if (appState.readUpdates.has(updateId)) {
+        appState.readUpdates.delete(updateId);
+        showToast('Marked as unread', 'info');
+    } else {
+        appState.readUpdates.add(updateId);
+        showToast('Marked as read', 'success');
+    }
+    
+    // Save to localStorage
+    localStorage.setItem('readUpdates', JSON.stringify(Array.from(appState.readUpdates)));
+    
+    // Re-render feed and recalculate stats
+    filterAndRender();
 }
 
 // Close Tweet Composer Drawer

@@ -355,7 +355,7 @@ body {
 
 #search-input {
     width: 100%;
-    padding: 0.8rem 1rem 0.8rem 2.8rem;
+    padding: 0.8rem 2.8rem 0.8rem 2.8rem;
     background: rgba(0, 0, 0, 0.25);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 8px;
@@ -1136,5 +1136,127 @@ body.light-theme .toast {
     background: #ffffff;
     border: 1px solid rgba(0, 0, 0, 0.1);
     color: #0f172a;
+}
+
+/* Search Clear Button */
+.search-clear-btn {
+    position: absolute;
+    right: 0.8rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.2rem;
+    border-radius: 50%;
+    transition: var(--transition-fast);
+}
+
+.search-clear-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+body.light-theme .search-clear-btn:hover {
+    background: rgba(0, 0, 0, 0.06);
+}
+
+/* Floating Back to Top Button */
+.back-to-top-btn {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 44px;
+    height: 44px;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    box-shadow: var(--shadow-md);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(10px);
+    transition: var(--transition-normal);
+}
+
+.back-to-top-btn.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.back-to-top-btn:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+}
+
+.back-to-top-btn:active {
+    transform: translateY(-1px) scale(1);
+}
+
+/* Day Collapse Chevron Button */
+.day-collapse-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition-fast);
+}
+
+.day-collapse-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+body.light-theme .day-collapse-btn:hover {
+    background: rgba(0, 0, 0, 0.04);
+}
+
+.day-collapse-btn i {
+    transition: transform var(--transition-normal);
+}
+
+.release-day-card.collapsed .day-collapse-btn i {
+    transform: rotate(-90deg);
+}
+
+.release-day-card.collapsed .updates-list {
+    display: none;
+}
+
+/* Read / Unread Styles */
+.update-action-trigger.read-toggle-trigger:hover {
+    background: rgba(16, 185, 129, 0.12);
+    color: var(--emerald);
+    border-color: rgba(16, 185, 129, 0.25);
+}
+
+.update-item.is-read {
+    opacity: 0.45;
+}
+
+.update-item.is-read:hover {
+    opacity: 0.9;
+}
+
+/* Copy Button Success State */
+.update-action-trigger.copy-success {
+    background: rgba(16, 185, 129, 0.12) !important;
+    color: var(--emerald) !important;
+    border-color: rgba(16, 185, 129, 0.3) !important;
 }
 

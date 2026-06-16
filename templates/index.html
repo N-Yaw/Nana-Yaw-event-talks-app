@@ -94,6 +94,9 @@
             <div class="search-wrapper">
                 <i data-lucide="search" class="search-icon"></i>
                 <input type="text" id="search-input" placeholder="Search release notes by keyword (e.g. Gemini, SQL, JSON)..." autocomplete="off">
+                <button id="search-clear-btn" class="search-clear-btn hidden" title="Clear search">
+                    <i data-lucide="x"></i>
+                </button>
             </div>
             <div class="filter-pills" id="filter-pills-container">
                 <button class="filter-pill active" data-filter="all">All Updates</button>
@@ -182,6 +185,10 @@
                             <span id="char-count" class="char-count-text">280</span>
                         </div>
                         <div class="composer-actions">
+                            <button id="reset-tweet-btn" class="btn btn-secondary-icon" title="Reset to default draft">
+                                <i data-lucide="rotate-ccw"></i>
+                                <span>Reset</span>
+                            </button>
                             <button id="copy-tweet-btn" class="btn btn-secondary-icon" title="Copy to clipboard">
                                 <i data-lucide="copy"></i>
                                 <span>Copy</span>
@@ -200,6 +207,11 @@
     <!-- Toast Notification Container -->
     <div id="toast-container" class="toast-container"></div>
 
-    <script src="{{ url_for('static', filename='js/app.js') }}?v=1.2"></script>
+    <!-- Floating Back to Top Button -->
+    <button id="back-to-top-btn" class="back-to-top-btn" title="Back to top">
+        <i data-lucide="arrow-up"></i>
+    </button>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}?v=1.3"></script>
 </body>
 </html>
